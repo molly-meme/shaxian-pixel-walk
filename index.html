@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>沙县一中 · 像素寻路</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; background-color: #1A1A2E;
+      width: 100vw; height: 100vh; overflow: hidden;
+      font-family: "PingFang SC", sans-serif;
+      user-select: none; -webkit-user-select: none;
+      display: flex; justify-content: center; align-items: center;
+    }
+
+    #canvas-wrap { 
+      position: absolute; width: 1280px; height: 720px; 
+      transform-origin: center center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    canvas { touch-action: none; } 
+
+    #top-bar {
+      position: absolute; top: 24px; right: 24px; 
+      display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+      pointer-events: none; z-index: 10;
+    }
+    #time-display, #task-counter, #item-counter {
+      background: rgba(20, 20, 35, 0.85); color: #E8E8F0;
+      padding: 10px 20px; border-radius: 6px; font-size: 18px; font-weight: bold;
+      border: 1px solid #E8E8F0; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      display: flex; align-items: center; gap: 12px;
+    }
+    #task-counter { font-size: 16px; color: #27AE60; }
+    #item-counter { font-size: 16px; color: #FFB84D; display: none; }
+    #clock-text { color: #FFB84D; font-size: 20px; letter-spacing: 1px; }
+    
+    #back-btn {
+      display: none; pointer-events: auto; width: fit-content;
+      padding: 10px 20px; background: #E8E8F0; color: #1A1A2E;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      font-weight: bold; transition: 0.2s; z-index: 15;
+    }
+
+    #vn-overlay {
+      position: absolute; top: 0; left: 0; width: 1280px; height: 720px;
+      pointer-events: none; display: none;
+    }
+    #dialogue-box {
+      position: absolute; bottom: 40px; right: 40px; width: 700px; height: 180px;
+      background: rgba(20, 20, 35, 0.95); border: 2px solid #E8E8F0; border-radius: 12px;
+      padding: 24px 32px; color: #E8E8F0; pointer-events: auto; cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+    }
+    #speaker-name { color: #FFB84D; font-size: 20px; margin-bottom: 12px; font-weight: bold; }
+    #dialogue-text { font-size: 20px; line-height: 1.6; flex: 1; }
+    #next-indicator {
+      position: absolute; bottom: 20px; right: 30px; color: #FFB84D; font-size: 24px; font-weight: bold;
+      animation: bounce 1s infinite; display: none;
+    }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+    #choice-panel {
+      position: absolute; bottom: 240px; right: 40px; width: 700px;
+      display: none; flex-direction: column; gap: 12px; pointer-events: auto; z-index: 20;
+    }
+    .choice-btn {
+      width: 100%; padding: 16px; background: rgba(20, 20, 35, 0.95); color: #E8E8F0;
+      border: 2px solid #E8E8F0; border-radius: 8px; font-size: 18px;
+      cursor: pointer; transition: all 0.2s; font-weight: bold;
+    }
+
+    #rhythm-ui {
+      position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+      display: none; flex-direction: column; align-items: center; pointer-events: none; z-index: 10;
+    }
+    #rhythm-score { font-size: 48px; font-weight: bold; color: #FFB84D; text-shadow: 0 0 10px rgba(255, 184, 77, 0.8); }
+    #rhythm-tip { font-size: 20px; color: #E8E8F0; margin-top: 8px; text-shadow: 0 0 5px #000; text-align: center; }
+
+    #log-btn {
+      position: absolute; bottom: 240px; right: 760px; padding: 8px 16px; background: rgba(20, 20, 35, 0.85); color: #E8E8F0;
+      border: 1px solid #E8E8F0; border-radius: 6px; cursor: pointer; pointer-events: auto; font-size: 14px; display: none; z-index: 15;
+    }
+
+    #log-panel {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 800px; height: 500px; background: rgba(15, 15, 25, 0.98);
+      border: 2px solid #E8E8F0; border-radius: 12px; padding: 24px;
+      display: none; flex-direction: column; pointer-events: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.9); z-index: 30;
+    }
+    #log-content { flex: 1; overflow-y: auto; color: #E8E8F0; line-height: 1.8; font-size: 16px; }
+    #log-content .log-speaker { color: #FFB84D; font-weight: bold; margin-right: 8px; }
+    .task-hl { color: #FFB84D; font-weight: bold; background: rgba(255, 184, 77, 0.15); padding: 0 4px; border-radius: 4px; border-bottom: 1px dashed #FFB84D; }
+    #close-log-btn { margin-top: 16px; padding: 10px; background: #2F6BFF; color: white; border: none; border-radius: 6px; cursor: pointer; }
+
+    #tutorial-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 560px; background: rgba(20, 20, 35, 0.95); border: 2px solid #E8E8F0; border-radius: 12px; padding: 32px; color: #E8E8F0; display: none; box-shadow: 0 10px 40px rgba(0,0,0,0.8); pointer-events: auto; z-index: 20; }
+    #tutorial-panel h2 { color: #FFB84D; margin-top: 0; text-align: center; }
+    #tutorial-btn { display: block; width: 100%; padding: 14px; margin-top: 24px; background: #2F6BFF; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.min.js"></script>
+</head>
+<body>
+  <audio id="school-song" loop>
+    <!-- <source src="school_song.mp3" type="audio/mpeg"> -->
+  </audio>
+  <audio id="hidden-bgm" loop>
+    <!-- <source src="hidden_bgm.mp3" type="audio/mpeg"> -->
+  </audio>
+
+  <div id="canvas-wrap">
+    <div id="top-bar">
+      <div id="time-display">
+        <span>2026年10月16日</span>
+        <span id="weather-icon" style="font-size: 22px;">☀️</span>
+        <span id="clock-text">07:30</span>
+      </div>
+      <div id="task-counter">✅ 已完成任务: 0</div>
+      <div id="item-counter">📜 神秘纸条: 0</div>
+      <button id="back-btn">返回校园</button>
+    </div>
+
+    <div id="tutorial-panel">
+      <h2>欢迎来到沙县一中</h2>
+      <p><strong>【操作指南】</strong><br>点击或触摸建筑自动寻路。进入建筑后点击对话框推进对话。</p>
+      <p><strong>【时间与天气】</strong><br>完成对话会流逝 1 小时。若遇下雨天，室外场地将没有同学。</p>
+      <p><strong>💡 累计完成 4 个任务，若带有纸条，或许会开启不同的命运……</strong></p>
+      <button id="tutorial-btn">我知道了，开始探索</button>
+    </div>
+
+    <div id="vn-overlay">
+      <button id="log-btn">查看对话记录</button>
+      <div id="dialogue-box">
+        <div id="speaker-name"></div>
+        <div id="dialogue-text"></div>
+        <div id="next-indicator">▼</div>
+      </div>
+    </div>
+
+    <div id="choice-panel"></div>
+
+    <div id="rhythm-ui">
+      <div id="rhythm-score">0 / 10</div>
+      <div id="rhythm-tip">按 A/D 键 或 点击屏幕左右侧 接住节拍！</div>
+    </div>
+
+    <div id="log-panel">
+      <h3 style="color:#FFB84D;text-align:center;">对话记录 (全局)</h3>
+      <div id="log-content"></div>
+      <button id="close-log-btn">关闭</button>
+    </div>
+  </div>
+
+  <script>
+    // ================= 1. 数据配置 =================
+    const PX = 16, GRID_W = 80, GRID_H = 45;
+    const START_POS = { gx: 42, gy: 43 };
+    let currentMinutes = 7 * 60 + 30;
+    const WEATHERS = ["☀️", "☁️", "🌧️"];
+    let currentWeather = WEATHERS[0];
+
+    const ZONES = [
+      { id:"basket1", name:"水平篮球场", bounds:{gx:5,  gy:4,  gw:8,  gh:4}, entrance:{gx:9, gy:8},   color:"#4A4A6A" },
+      { id:"basket2", name:"篮球场",     bounds:{gx:23, gy:4,  gw:8,  gh:4}, entrance:{gx:27,gy:8},   color:"#4A4A6A" },
+      { id:"badm",    name:"羽毛球场",   bounds:{gx:32, gy:4,  gw:12, gh:4}, entrance:{gx:38,gy:8},   color:"#6B5B4A" },
+      { id:"yuxiu",   name:"毓秀楼",     bounds:{gx:45, gy:4,  gw:14, gh:4}, entrance:{gx:52,gy:8},   color:"#6B5B4A" },
+      { id:"ruyuan",  name:"如苑",       bounds:{gx:63, gy:4,  gw:8,  gh:4}, entrance:{gx:67,gy:8},   color:"#6B5B4A" },
+      { id:"track",   name:"田径场",     bounds:{gx:5,  gy:9,  gw:15, gh:26},entrance:{gx:20,gy:22},  color:"#C0392B" },
+      { id:"liuyi",   name:"六艺楼",     bounds:{gx:23, gy:12, gw:6,  gh:17},entrance:{gx:29,gy:20},  color:"#5A4A6A" },
+      { id:"flag",    name:"国旗台",     bounds:{gx:23, gy:31, gw:3,  gh:2}, entrance:{gx:26,gy:32},  color:"#A85A5A" },
+      { id:"houji",   name:"厚积楼",     bounds:{gx:32, gy:12, gw:8,  gh:8}, entrance:{gx:37,gy:12},  color:"#4A6A4A" },
+      { id:"jiusi",   name:"九思楼",     bounds:{gx:32, gy:21, gw:8,  gh:6}, entrance:{gx:37,gy:27},  color:"#4A6A4A" },
+      { id:"shaoen",  name:"绍恩楼",     bounds:{gx:49, gy:12, gw:8,  gh:8}, entrance:{gx:53,gy:12},  color:"#4A6A4A" },
+      { id:"sanli",   name:"三立堂",     bounds:{gx:45, gy:24, gw:4,  gh:6}, entrance:{gx:47,gy:30},  color:"#6A5A4A" },
+      { id:"gezhi",   name:"格致楼",     bounds:{gx:51, gy:24, gw:6,  gh:4}, entrance:{gx:54,gy:28},  color:"#4A6A4A" },
+      { id:"guiyuan", name:"桂苑",       bounds:{gx:63, gy:12, gw:8,  gh:3}, entrance:{gx:63,gy:13},  color:"#6B5B4A" },
+      { id:"meiyuan", name:"梅苑",       bounds:{gx:63, gy:18, gw:8,  gh:3}, entrance:{gx:63,gy:19},  color:"#6B5B4A" },
+      { id:"zhuyuan", name:"竹苑",       bounds:{gx:63, gy:24, gw:8,  gh:3}, entrance:{gx:63,gy:25},  color:"#6B5B4A" },
+      { id:"siyuan",  name:"思源厅",     bounds:{gx:63, gy:31, gw:8,  gh:5}, entrance:{gx:63,gy:33},  color:"#6A5A4A" }
+    ];
+
+    // ================= 2. 全局状态 =================
+    let currentState = "TITLE"; 
+    let isHiddenEnding = false; 
+    let shared = { 
+      playerPos: { ...START_POS }, 
+      targetZone: null, 
+      visitedZones: [], 
+      activeTasks: [], 
+      tasksCompleted: 0,
+      papers: 0,
+      helpedList: new Set(),
+      hasEnded: false
+    };
+    let globalLog = []; 
+
+    let overlay, dialogueBox, speakerEl, textEl, backBtn, tutorialPanel, tutorialBtn;
+    let clockEl, weatherEl, nextIndicator, logBtn, logPanel, logContent, closeLogBtn;
+    let choicePanel, rhythmUI, rhythmScoreEl, rhythmTipEl, taskCounterEl, itemCounterEl;
+    let audioSchool, audioHidden;
+
+    let dialogueQueue = []; 
+    let currentLine = null;
+    let typingTimer, charIndex = 0, isTyping = false;
+    let onQueueComplete = null; 
+    let lastInteractionTime = 0;
+    let currentScale = 1; 
+
+    // 音游状态
+    let minigameScore = 0, notes = [], notesSpawned = 0, hitEffects = []; 
+    let currentMinigameConfig = null;
+
+    // 分类小游戏状态
+    let sortingGame = { active: false, timer: 15, score: 0, currentNum: 0, leftTarget: "", rightTarget: "", floatX: 640, floatY: 200, boxLeft: {x: 300, y: 500, w: 200, h: 120}, boxRight: {x: 780, y: 500, w: 200, h: 120} };
+
+    // 打扫卫生小游戏状态
+    let cleaningGame = { active: false, timer: 15, score: 0, items: [] };
+    const mathProblems = [
+      { eq: "3 × 7 = 21", valid: true }, { eq: "8 + 9 = 17", valid: true },
+      { eq: "12 ÷ 4 = 3", valid: true }, { eq: "5² = 25", valid: true },
+      { eq: "3 × 8 = 22", valid: false }, { eq: "9 + 6 = 16", valid: false },
+      { eq: "15 ÷ 3 = 6", valid: false }, { eq: "4² = 18", valid: false }
+    ];
+
+    // 思源厅：接水滴小游戏状态
+    let waterGame = { active: false, timer: 15, score: 0, drops: [] };
+
+    // 致谢与校歌状态
+    let creditsY = 720;
+    let creditsText = [];
+    let songY = 720;
+    const songLyrics = [
+      { text: "沙县一中校歌 · 崛起世界东方", size: 32, color: "#FFB84D", spacing: 80 },
+      { text: "沙溪之畔，文脉流长", size: 24, color: "#FFFFFF", spacing: 50 },
+      { text: "明伦堂前，书声琅琅", size: 24, color: "#FFFFFF", spacing: 50 },
+      { text: "砺志笃学，求真致美", size: 24, color: "#FFB84D", spacing: 50 },
+      { text: "竞贤向上，奋发图强", size: 24, color: "#FFFFFF", spacing: 50 },
+      { text: "", size: 24, color: "#FFF", spacing: 40 },
+      { text: "百年树人，桃李芬芳", size: 24, color: "#FFFFFF", spacing: 50 },
+      { text: "青春一中，崛起世界东方！", size: 26, color: "#FFB84D", spacing: 100 },
+      { text: "（谨以此作，献给沙县一中）", size: 18, color: "#888", spacing: 50 }
+    ];
+
+    let hiddenY = 720;
+    const hiddenText = [
+      { text: "沙县一中", size: 36, color: "#FFB84D", spacing: 80 },
+      { text: "始于1923年", size: 28, color: "#FFFFFF", spacing: 60 },
+      { text: "这所百年学校经历了抗日", size: 24, color: "#E8E8F0", spacing: 50 },
+      { text: "也经历过解放", size: 24, color: "#E8E8F0", spacing: 50 },
+      { text: "一直到现在还焕发着生机", size: 24, color: "#E8E8F0", spacing: 50 },
+      { text: "我有幸来到沙县一中", size: 24, color: "#E8E8F0", spacing: 50 },
+      { text: "亲身感受了沙县一中浓厚的历史", size: 24, color: "#E8E8F0", spacing: 50 },
+      { text: "它值得去践行百余年的中国梦", size: 24, color: "#E8E8F0", spacing: 50 },
+      { text: "去为中华民族的复兴出自己的一份力量", size: 24, color: "#E8E8F0", spacing: 50 },
+      { text: "让我们继续", size: 24, color: "#FFB84D", spacing: 50 },
+      { text: "继续平稳的航行下去", size: 24, color: "#FFB84D", spacing: 50 },
+      { text: "直到到达那个共产主义的彼岸", size: 28, color: "#FF4D4D", spacing: 80 },
+      { text: "加油各位", size: 26, color: "#FFB84D", spacing: 60 },
+      { text: "加油一中", size: 36, color: "#FFB84D", spacing: 100 }
+    ];
+
+    function setup() {
+      let c = createCanvas(1280, 720);
+      c.parent("canvas-wrap");
+      noSmooth();
+      
+      audioSchool = document.getElementById("school-song");
+      audioHidden = document.getElementById("hidden-bgm");
+      
+      overlay = document.getElementById("vn-overlay");
+      dialogueBox = document.getElementById("dialogue-box");
+      speakerEl = document.getElementById("speaker-name");
+      textEl = document.getElementById("dialogue-text");
+      backBtn = document.getElementById("back-btn");
+      tutorialPanel = document.getElementById("tutorial-panel");
+      tutorialBtn = document.getElementById("tutorial-btn");
+      clockEl = document.getElementById("clock-text");
+      weatherEl = document.getElementById("weather-icon");
+      nextIndicator = document.getElementById("next-indicator");
+      logBtn = document.getElementById("log-btn");
+      logPanel = document.getElementById("log-panel");
+      logContent = document.getElementById("log-content");
+      closeLogBtn = document.getElementById("close-log-btn");
+      choicePanel = document.getElementById("choice-panel");
+      rhythmUI = document.getElementById("rhythm-ui");
+      rhythmScoreEl = document.getElementById("rhythm-score");
+      rhythmTipEl = document.getElementById("rhythm-tip");
+      taskCounterEl = document.getElementById("task-counter");
+      itemCounterEl = document.getElementById("item-counter");
+
+      updateClockUI();
+      updateTaskUI();
+      windowResized(); 
+      
+      window.addEventListener('pointerdown', (e) => {
+        if (e.target.tagName !== 'CANVAS') return;
+        handleInteraction(e.clientX, e.clientY);
+      });
+      document.addEventListener('touchstart', function(e) {
+        if (e.target.tagName === 'CANVAS') e.preventDefault();
+      }, { passive: false });
+
+      tutorialBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); tutorialPanel.style.display = "none"; currentState = "OVERVIEW"; });
+      dialogueBox.addEventListener('pointerdown', (e) => { e.preventDefault(); advanceDialogue(); });
+      backBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); currentState = "OVERVIEW"; overlay.style.display = "none"; backBtn.style.display = "none"; choicePanel.style.display = "none"; });
+      logBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); logPanel.style.display = "flex"; renderLog(); });
+      closeLogBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); logPanel.style.display = "none"; });
+    }
+
+    // ================= 3. 屏幕自适应与坐标转换 =================
+    function windowResized() {
+      let scaleX = windowWidth / 1280;
+      let scaleY = windowHeight / 720;
+      currentScale = Math.min(scaleX, scaleY);
+      document.getElementById("canvas-wrap").style.transform = `scale(${currentScale})`;
+    }
+
+    function getLogicalCoords(clientX, clientY) {
+      let rect = document.getElementById("canvas-wrap").getBoundingClientRect();
+      return { x: (clientX - rect.left) / currentScale, y: (clientY - rect.top) / currentScale };
+    }
+
+    // ================= 4. 时间与寻路 =================
+    function updateClockUI() {
+      let h = Math.floor(currentMinutes / 60), m = currentMinutes % 60;
+      clockEl.textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      weatherEl.textContent = currentWeather;
+    }
+    function updateTaskUI() {
+      taskCounterEl.textContent = `✅ 已完成任务: ${shared.tasksCompleted}`;
+      if (shared.papers > 0) {
+        itemCounterEl.style.display = "flex";
+        itemCounterEl.textContent = `📜 神秘纸条: ${shared.papers}`;
+      }
+
+      if (shared.tasksCompleted >= 4 && !shared.hasEnded) {
+        shared.hasEnded = true;
+        setTimeout(triggerEnding, 500); 
+      }
+    }
+    function advanceTime() {
+      currentMinutes += 60; 
+      currentWeather = WEATHERS[Math.floor(Math.random() * WEATHERS.length)];
+      updateClockUI();
+    }
+    function gx2x(gx) { return gx * PX; }
+    function gy2y(gy) { return gy * PX; }
+
+    function isWalkable(gx, gy) {
+      if (gx < 3 || gy < 3 || gx >= 76 || gy >= 45) return false;
+      if (gy === 40 && (gx < 38 || gx > 46)) return false;
+      for (const z of ZONES) {
+        const b = z.bounds;
+        if (gx >= b.gx && gx < b.gx + b.gw && gy >= b.gy && gy < b.gy + b.gh) {
+          if (z.id === "houji" && gx >= 34 && gy >= 15) continue; 
+          if (z.id === "shaoen" && gx < 55 && gy >= 15) continue;
+          if (z.id === "jiusi" && gx >= 34 && gy >= 24) continue;
+          if (z.name !== "" && gx === z.entrance.gx && gy === z.entrance.gy) return true;
+          return false;
+        }
+      }
+      return true;
+    }
+    function heuristic(a, b) { return abs(a.gx - b.gx) + abs(a.gy - b.gy); }
+    function astar(start, goal) {
+      const key = (p) => `${p.gx},${p.gy}`;
+      const open = [{ ...start, g: 0, f: heuristic(start, goal), parent: null }];
+      const closed = new Map();
+      while (open.length > 0) {
+        open.sort((a, b) => a.f - b.f);
+        const current = open.shift();
+        if (current.gx === goal.gx && current.gy === goal.gy) {
+          const path = []; let node = current;
+          while (node) { path.unshift({ gx: node.gx, gy: node.gy }); node = node.parent; }
+          return path;
+        }
+        closed.set(key(current), current);
+        for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+          const nx = current.gx + dx, ny = current.gy + dy;
+          if (!isWalkable(nx, ny) || closed.has(`${nx},${ny}`)) continue;
+          const g = current.g + 1;
+          const existing = open.find(n => n.gx === nx && n.gy === ny);
+          if (existing) { if (g < existing.g) { existing.g = g; existing.f = g + heuristic({gx:nx,gy:ny}, goal); existing.parent = current; } }
+          else open.push({ gx: nx, gy: ny, g, f: g + heuristic({gx:nx,gy:ny}, goal), parent: current });
+        }
+      }
+      return [];
+    }
+
+    // ================= 5. 主循环与绘制 =================
+    let hoverZone = null, travelPath = [], travelProgress = 0;
+
+    function draw() {
+      if (currentState === "TITLE") {
+        background("#1A1A2E"); textAlign(CENTER, CENTER);
+        fill("#FFB84D"); textSize(64); text("沙县一中 · 像素寻路", width / 2, height / 2 - 60);
+        const alpha = map(sin(frameCount * 0.05), -1, 1, 50, 255);
+        fill(255, 255, 255, alpha); textSize(18); text("按 任 意 键 或 点 击 屏 幕 开 始", width / 2, height / 2 + 160);
+        return;
+      }
+      if (currentState === "CREDITS") { drawCredits(); return; }
+      if (currentState === "SCHOOL_SONG") { drawSchoolSong(); return; }
+      if (currentState === "HIDDEN_ENDING") { drawHiddenEnding(); return; }
+      if (currentState === "MINIGAME") { drawMinigame(); return; }
+      if (currentState === "SORTING_GAME") { drawSortingGame(); return; }
+      if (currentState === "CLEANING_GAME") { drawCleaningGame(); return; }
+      if (currentState === "WATER_GAME") { drawWaterGame(); return; } // 新增思源厅小游戏
+      if (currentState === "ZONE") return; 
+
+      drawMap();
+
+      if (currentState === "TRAVELING") {
+        const idx = floor(travelProgress);
+        if (idx < travelPath.length - 1) {
+          const a = travelPath[idx], b = travelPath[idx + 1];
+          const t = travelProgress - idx;
+          shared.playerPos = { gx: lerp(a.gx, b.gx, t), gy: lerp(a.gy, b.gy, t) };
+          travelProgress += 0.15;
+        } else {
+          shared.playerPos = { ...travelPath[travelPath.length - 1] };
+          travelPath = []; currentState = "ZONE";
+          enterZone(shared.targetZone);
+        }
+      } else if (currentState === "OVERVIEW") {
+        if (mouseX > 0 && mouseY > 0) {
+          let pos = getLogicalCoords(mouseX, mouseY);
+          const gx = pos.x / PX, gy = pos.y / PX;
+          hoverZone = ZONES.find(z => z.name !== "" && gx >= z.bounds.gx && gx < z.bounds.gx + z.bounds.gw && gy >= z.bounds.gy && gy < z.bounds.gy + z.bounds.gh) || null;
+        } else hoverZone = null;
+      }
+    }
+
+    function drawMap() {
+      background("#2C3E50"); 
+      push(); stroke("#E8E8F0"); strokeWeight(3); noFill();
+      line(gx2x(3), gy2y(3), gx2x(76), gy2y(3)); line(gx2x(3), gy2y(3), gx2x(3), gy2y(40));
+      line(gx2x(76), gy2y(3), gx2x(76), gy2y(40)); line(gx2x(3), gy2y(40), gx2x(38), gy2y(40));
+      line(gx2x(46), gy2y(40), gx2x(76), gy2y(40)); pop();
+
+      for (const z of ZONES) {
+        const x = gx2x(z.bounds.gx), y = gy2y(z.bounds.gy);
+        const w = z.bounds.gw * PX, h = z.bounds.gh * PX;
+        fill(z.color); stroke("#E8E8F0"); strokeWeight(1.5);
+
+        if (z.id === "houji") {
+          beginShape(); vertex(x, y); vertex(x + w, y); vertex(x + w, y + 3*PX); vertex(x + 2*PX, y + 3*PX); vertex(x + 2*PX, y + h); vertex(x, y + h); endShape(CLOSE);
+        } else if (z.id === "shaoen") {
+          beginShape(); vertex(x, y); vertex(x + w, y); vertex(x + w, y + h); vertex(x + 6*PX, y + h); vertex(x + 6*PX, y + 3*PX); vertex(x, y + 3*PX); endShape(CLOSE);
+        } else if (z.id === "jiusi") {
+          beginShape(); vertex(x, y); vertex(x + w, y); vertex(x + w, y + 3*PX); vertex(x + 2*PX, y + 3*PX); vertex(x + 2*PX, y + h); vertex(x, y + h); endShape(CLOSE);
+        } else {
+          rect(x, y, w, h);
+        }
+
+        if (z.id === "track") {
+          fill("#C0392B"); noStroke(); ellipse(x + w/2, y + h/2, w - 20, h - 40);
+          fill("#27AE60"); ellipse(x + w/2, y + h/2, w - 50, h - 80);
+          stroke("#E8E8F0"); noFill(); ellipse(x + w/2, y + h/2, w - 20, h - 40);
+        }
+
+        if (z.name !== "") {
+          if (shared.activeTasks.includes(z.id)) {
+            fill(255, 77, 77, 150 + sin(frameCount * 0.2) * 105); noStroke();
+            ellipse(gx2x(z.entrance.gx), gy2y(z.entrance.gy), 14, 14);
+          } else {
+            fill("#FF4D4D"); noStroke(); ellipse(gx2x(z.entrance.gx), gy2y(z.entrance.gy), 6, 6);
+          }
+          fill("#FFFFFF"); textAlign(CENTER, CENTER); textSize(12);
+          if (z.id === "houji") text(z.name, x + w/2, y + 1.5*PX);
+          else if (z.id === "shaoen") text(z.name, x + 4*PX, y + 1.5*PX);
+          else if (z.id === "jiusi") text(z.name, x + 4*PX, y + 1.5*PX);
+          else if (z.id === "flag") text(z.name, x + w/2, y + h/2 + 20);
+          else text(z.name, x + w/2, y + h/2);
+        }
+      }
+
+      const px = gx2x(shared.playerPos.gx), py = gy2y(shared.playerPos.gy);
+      fill("#2F6BFF"); stroke("#FFFFFF"); strokeWeight(2); ellipse(px, py, 12, 12);
+
+      if (hoverZone && currentState === "OVERVIEW") {
+        noFill(); stroke("#FFB84D"); drawingContext.setLineDash([5, 5]); rect(gx2x(hoverZone.bounds.gx)-2, gy2y(hoverZone.bounds.gy)-2, hoverZone.bounds.gw*PX+4, hoverZone.bounds.gh*PX+4); drawingContext.setLineDash([]);
+      }
+    }
+
+    // ================= 6. 核心事件处理 =================
+    function keyPressed() {
+      if (currentState === "TITLE") { currentState = "TUTORIAL"; tutorialPanel.style.display = "block"; }
+      if (currentState === "MINIGAME") {
+        if (key === 'a' || key === 'A') checkHit("left");
+        if (key === 'd' || key === 'D') checkHit("right");
+      }
+    }
+
+    function handleInteraction(clientX, clientY) {
+      const now = Date.now();
+      if (now - lastInteractionTime < 100) return; 
+      lastInteractionTime = now;
+      const pos = getLogicalCoords(clientX, clientY);
+
+      if (currentState === "TITLE") { 
+        currentState = "TUTORIAL"; tutorialPanel.style.display = "block"; return; 
+      }
+      
+      if (currentState === "CREDITS") {
+        if (creditsY < -1500) { 
+          if (isHiddenEnding) {
+            currentState = "HIDDEN_ENDING";
+            hiddenY = 720;
+            if (audioHidden) { audioHidden.play().catch(e => console.log(e)); }
+          } else {
+            currentState = "SCHOOL_SONG";
+            songY = 720;
+            if (audioSchool) { audioSchool.play().catch(e => console.log(e)); }
+          }
+        }
+        return;
+      }
+
+      if (currentState === "SCHOOL_SONG" || currentState === "HIDDEN_ENDING") {
+        if ((currentState === "SCHOOL_SONG" && songY < -1500) || (currentState === "HIDDEN_ENDING" && hiddenY < -1500)) {
+          resetGame();
+        }
+        return;
+      }
+
+      if (currentState === "MINIGAME") {
+        if (pos.x < 1280 / 2) checkHit("left");
+        else checkHit("right");
+        return;
+      }
+
+      if (currentState === "SORTING_GAME") { checkSortingHit(pos.x, pos.y); return; }
+      if (currentState === "CLEANING_GAME") { checkCleaningHit(pos.x, pos.y); return; }
+      if (currentState === "WATER_GAME") { checkWaterHit(pos.x, pos.y); return; } // 新增接水滴判定
+
+      if (currentState === "OVERVIEW") {
+        const gx = pos.x / PX, gy = pos.y / PX;
+        const target = ZONES.find(z => z.name !== "" && gx >= z.bounds.gx && gx < z.bounds.gx + z.bounds.gw && gy >= z.bounds.gy && gy < z.bounds.gy + z.bounds.gh);
+        if (target) {
+          const path = astar(shared.playerPos, target.entrance);
+          if (path.length > 0) { 
+            travelPath = path; travelProgress = 0; shared.targetZone = target; currentState = "TRAVELING"; 
+          }
+        }
+      }
+    }
+
+    // ================= 7. 剧情逻辑 =================
+    function enterZone(zone) {
+      fill(zone.color); noStroke(); rect(0, 0, width, height);
+      overlay.style.display = "block"; backBtn.style.display = "block"; logBtn.style.display = "block";
+      
+      const isOutdoor = ["track", "basket1", "basket2", "badm", "flag"].includes(zone.id);
+      const isTurnInTrack = zone.id === "track" && shared.visitedZones.includes("track") && shared.activeTasks.length === 0 && shared.tasksCompleted === 0;
+
+      if (shared.activeTasks.length > 0 && !shared.activeTasks.includes(zone.id) && !isTurnInTrack) {
+        startDialogue([ { speaker: "旁白", text: "先完成现在给的任务吧，不能贪心哦。" } ]); return;
+      }
+
+      if (currentWeather === "🌧️" && isOutdoor && !isTurnInTrack) {
+        if (zone.id === "flag") startDialogue([ { speaker: "旁白", text: "下雨了，这里没有同学，去教学楼找找看吧。" } ]);
+        else startDialogue([ { speaker: "旁白", text: "今天是下雨天，同学们不想外出。" } ]);
+        return;
+      }
+
+      // ================= 新增：思源厅买水剧情 =================
+      if (zone.id === "siyuan") {
+        if (!shared.visitedZones.includes("siyuan")) {
+          startDialogue([
+            { speaker: "同学", text: "嘿！刚好遇到你，要不要一起去小卖部买瓶水？" },
+            { speaker: "主角", text: "好啊，正好有点渴了。" },
+            { speaker: "旁白", text: "你们来到饮水机前，水龙头好像有点漏水，水滴到处乱飞。" },
+            { speaker: "同学", text: "快！帮我接住几滴，别浪费了！" }
+          ], () => {
+            shared.visitedZones.push("siyuan");
+            advanceTime();
+            startWaterGame();
+          });
+        } else {
+          startDialogue([ { speaker: "同学", text: "刚才的水真好喝，下次再一起去啊。" } ], finishNormalZone);
+        }
+        return;
+      }
+
+      if (zone.id === "yuxiu") {
+        if (!shared.visitedZones.includes("yuxiu")) {
+          startDialogue([
+            { speaker: "班主任", text: "同学们，今天下午大扫除，大家分工合作，把各自负责的区域打扫干净。" },
+            { speaker: "班主任", text: "你，带几个同学去格致楼一楼的平台那边，把落叶和杂物清理一下。" },
+            { speaker: "主角", text: "收到！大家跟我来。" },
+            { speaker: "旁白", text: "你和同学们拿着扫把和簸箕来到格致楼一楼平台。" },
+            { speaker: "同学", text: "哈哈，平时觉得打扫卫生挺累的，大家一起干还挺有意思的。" },
+            { speaker: "旁白", text: "大家有说有笑，齐心协力地完成了大扫除。" }
+          ], () => {
+            shared.visitedZones.push("yuxiu");
+            shared.helpedList.add("班主任");
+            shared.tasksCompleted += 1; 
+            advanceTime();
+            updateTaskUI();
+            textEl.innerHTML = "（大扫除完成，点击右上角返回校园）";
+            globalLog.push({ speaker: "旁白", text: "【任务完成】协助班主任完成了大扫除。" });
+          });
+        } else {
+          startDialogue([ { speaker: "班主任", text: "辛苦了，干得不错！" } ], finishNormalZone);
+        }
+        return;
+      }
+
+      if (zone.id === "meiyuan" || zone.id === "zhuyuan") {
+        startDialogue([ { speaker: "宿管阿姨", text: "哎哎哎，站住！你是男生，不能进入女生宿舍。" } ], () => {
+          textEl.innerHTML = "（点击右上角返回校园）"; speakerEl.textContent = "";
+        });
+        return;
+      }
+
+      if (zone.id === "ruyuan" || zone.id === "guiyuan") {
+        if (!shared.visitedZones.includes("dorm_cleaning")) {
+          startDialogue([
+            { speaker: "教官", text: "站住！你们几个，刚好，今天轮到你们负责走廊的卫生了。" },
+            { speaker: "主角", text: "啊？又打扫……教官，我们作业还没写完呢。" },
+            { speaker: "舍友", text: "就是啊，这走廊看着挺干净的啊。" },
+            { speaker: "教官", text: "少废话，一屋不扫何以扫天下？赶紧去拿扫把！" },
+            { speaker: "旁白", text: "你和舍友虽然嘴上抱怨，但还是老老实实拿起了扫把。" },
+            { speaker: "旁白", text: "走廊上散落着很多用过的废纸团，似乎写着什么。" }
+          ], () => {
+            shared.visitedZones.push("dorm_cleaning");
+            advanceTime();
+            startCleaningGame();
+          });
+        } else {
+          startDialogue([ { speaker: "教官", text: "走廊很干净，上次干得不错，去吧。" } ], finishNormalZone);
+        }
+        return;
+      }
+
+      if (zone.id === "sanli") {
+        if (!shared.visitedZones.includes("sanli")) {
+          startDialogue([
+            { speaker: "旁白", text: "你走进三立堂，这里正在举行入团积极分子大会。" },
+            { speaker: "团委老师", text: "各位同学，今天我们在这里集会，是为了迎接新一批的共青团员。" },
+            { speaker: "团委老师", text: "我看到前排那位同学（看向你），能帮我把桌上的册子分发给各排吗？" },
+            { speaker: "旁白", text: "你走到讲台前，面对一摞打乱的数学练习册，上面印着不同的数字。" }
+          ], () => {
+            shared.visitedZones.push("sanli"); advanceTime(); startSortingGame();
+          });
+        } else {
+          startDialogue([ { speaker: "团委老师", text: "感谢你刚才的帮忙，大会进行得很顺利。" } ], finishNormalZone);
+        }
+        return;
+      }
+
+      if (zone.id === "track") {
+        if (isTurnInTrack) {
+          startDialogue([
+            { speaker: "陈竞", text: "同学！我看你不仅帮我买了水，还帮张同学搬了作业，真是个热心肠！" },
+            { speaker: "陈竞", text: "一中有你这样的同学，真不错。谢谢你的帮助！" }
+          ], () => {
+            shared.helpedList.add("陈竞");
+            shared.tasksCompleted++; 
+            advanceTime();
+            updateTaskUI();
+            textEl.innerHTML = "（任务圆满完成！点击右上角返回校园）";
+            globalLog.push({ speaker: "旁白", text: "【任务完成】已向陈竞复命。" });
+          });
+          return;
+        }
+        if (!shared.visitedZones.includes("track")) {
+          startDialogue([
+            { speaker: "体育老师", text: "那个同学，别光看着啊！既然来了田径场，就先去跑两圈热热身！" },
+            { speaker: "体育老师", text: "这对你的体测成绩有好处，快去！" },
+            { speaker: "旁白", text: "你被迫在田径场上跑了一圈，气喘吁吁。" },
+            { speaker: "陈竞", text: "呼……同学，你也是被老师抓来跑步的？" },
+            { speaker: "陈竞", text: "对了，既然你也被抓来了，刚好我有两件事要拜托你。" },
+            { speaker: "陈竞", text: "你等会儿去【厚积楼】帮张同学搬一下作业，然后去【绍恩楼一楼】的小卖部帮我买瓶水。" },
+            { speaker: "陈竞", text: "不过看你跑得挺快的，要不我们先比比 1000 米？" }
+          ], () => {
+            showChoices([
+              { text: "再跑几圈练练！(触发比拼)", action: startTrackMinigame },
+              { text: "算了，我去帮同学找东西。", action: finishTrackEvent }
+            ]);
+          });
+        } else {
+          startDialogue([ { speaker: "陈竞", text: "别忘了去厚积楼和绍恩楼帮忙哦！加油！" } ], () => { textEl.innerHTML = "（点击右上角返回校园）"; });
+        }
+      } 
+      else if (zone.id === "flag") {
+        if (!shared.visitedZones.includes("flag")) {
+          startDialogue([
+            { speaker: "旁白", text: "你来到国旗台，看到国旗班正在练习升国旗。" },
+            { speaker: "护旗手", text: "同学你好！刚好你在，能不能帮个忙？" },
+            { speaker: "护旗手", text: "这些仪仗棍和旗帜太重了，能帮我们放到【六艺楼】的器材室吗？" }
+          ], () => {
+            shared.visitedZones.push("flag"); shared.activeTasks.push("liuyi"); advanceTime();
+            textEl.innerHTML = "（接受任务，点击右上角返回校园）";
+            globalLog.push({ speaker: "旁白", text: "【任务提示】去六艺楼存放仪仗棍。" });
+          });
+        } else {
+          startDialogue([ { speaker: "护旗手", text: "辛苦你了，快去六艺楼吧！" } ], () => { textEl.innerHTML = "（点击右上角返回校园）"; });
+        }
+      }
+      else if (zone.id === "liuyi") {
+        if (shared.activeTasks.includes("liuyi")) {
+          startDialogue([
+            { speaker: "旁白", text: "你来到六艺楼，把沉甸甸的仪仗物品放进了器材室。" },
+            { speaker: "护旗手", text: "太谢谢你了！要不是你帮忙，我们还得跑好几趟。" },
+            { speaker: "护旗手", text: "这就是一中‘砺志、笃学、求真、致美’的精神吧，你做得真好！" }
+          ], () => {
+            shared.activeTasks = []; 
+            shared.helpedList.add("护旗手");
+            shared.tasksCompleted++; 
+            advanceTime();
+            updateTaskUI();
+            textEl.innerHTML = "（任务完成，点击右上角返回校园）";
+            globalLog.push({ speaker: "旁白", text: "【任务完成】帮忙整理了国旗班物品。" });
+          });
+          return;
+        }
+
+        if (!shared.visitedZones.includes("liuyi_music") && !shared.visitedZones.includes("liuyi_art")) {
+          if (Math.random() < 0.5) {
+            shared.visitedZones.push("liuyi_music");
+            startDialogue([
+              { speaker: "音乐老师", text: "哎呀，这位同学来得正好！" },
+              { speaker: "音乐老师", text: "马上要合唱比赛了，教室里的乐器乱七八糟的，能帮我整理一下吗？" }
+            ], () => {
+              showChoices([
+                { text: "没问题，交给我吧！", action: () => {
+                  startGenericMinigame({
+                    tip: "点击屏幕左右侧（或按 A/D 键）跟着节奏整理乐器！",
+                    onWin: () => {
+                      shared.helpedList.add("音乐老师");
+                      shared.tasksCompleted += 1; advanceTime(); updateTaskUI();
+                      startDialogue([ { speaker: "音乐老师", text: "哇！整理得太棒了，简直像交响乐一样有节奏感！" }, { speaker: "音乐老师", text: "你真是帮了我大忙，一中的孩子就是能干！" } ], finishNormalZone);
+                    },
+                    onLose: () => {
+                      shared.tasksCompleted += 0.5; advanceTime(); updateTaskUI();
+                      startDialogue([ { speaker: "音乐老师", text: "哈哈，虽然稍微有点乱，不过还是辛苦你了。" }, { speaker: "音乐老师", text: "没关系，剩下的我自己来就好，谢谢你的帮忙！" } ], finishNormalZone);
+                    }
+                  });
+                }},
+                { text: "抱歉，我还有急事……", action: () => { startDialogue([ { speaker: "音乐老师", text: "没关系，你去忙吧，我自己慢慢整理。" } ], finishNormalZone); }}
+              ]);
+            });
+          } else {
+            shared.visitedZones.push("liuyi_art");
+            startDialogue([
+              { speaker: "美术老师", text: "同学，你来得太及时了！" },
+              { speaker: "美术老师", text: "刚画完的风景画需要晾干，你能帮我把画作按顺序摆整齐吗？" }
+            ], () => {
+              showChoices([
+                { text: "没问题，交给我吧！", action: () => {
+                  startGenericMinigame({
+                    tip: "点击屏幕左右侧（或按 A/D 键）看准时机摆放画作！",
+                    onWin: () => {
+                      shared.helpedList.add("美术老师");
+                      shared.tasksCompleted += 1; advanceTime(); updateTaskUI();
+                      startDialogue([ { speaker: "美术老师", text: "完美！摆放得就像画展一样整洁。" }, { speaker: "美术老师", text: "你真有艺术细胞，谢谢你让画室变得这么美！" } ], finishNormalZone);
+                    },
+                    onLose: () => {
+                      shared.tasksCompleted += 0.5; advanceTime(); updateTaskUI();
+                      startDialogue([ { speaker: "美术老师", text: "哎呀，有几张画歪了，不过没关系。" }, { speaker: "美术老师", text: "你已经尽力了，剩下的我来微调就好，去忙吧。" } ], finishNormalZone);
+                    }
+                  });
+                }},
+                { text: "抱歉，我还有急事……", action: () => { startDialogue([ { speaker: "美术老师", text: "没事，你先去忙，我再等等其他人。" } ], finishNormalZone); }}
+              ]);
+            });
+          }
+        } else {
+          startDialogue([ { speaker: "旁白", text: "老师在专心工作，就不去打扰了。" } ], finishNormalZone);
+        }
+      }
+      else if (zone.id === "houji" && shared.activeTasks.includes("houji")) {
+        startDialogue([
+          { speaker: "旁白", text: "你来到厚积楼，找到了张同学。" },
+          { speaker: "张同学", text: "陈竞让你来帮我搬作业的？太感谢了！" },
+          { speaker: "张同学", text: "这一大摞作业本，刚好帮我搬去二楼的办公室吧。" },
+          { speaker: "旁白", text: "你帮张同学搬完了沉重的作业，出了一身汗，但心里很踏实。" }
+        ], () => { 
+          shared.helpedList.add("张同学");
+          completeTask("houji"); 
+        });
+      }
+      else if (zone.id === "shaoen" && shared.activeTasks.includes("shaoen")) {
+        startDialogue([
+          { speaker: "旁白", text: "你来到绍恩楼一楼的小卖部。" },
+          { speaker: "老板", text: "同学，买点什么？" },
+          { speaker: "旁白", text: "你帮陈竞买了一瓶冰镇矿泉水。" },
+          { speaker: "老板", text: "拿好嘞，代我向陈竞问好，让他下次跑步悠着点。" }
+        ], () => { completeTask("shaoen"); });
+      }
+      else {
+        startDialogue([ { speaker: "同学", text: "今天天气真好，弘光广场的风吹着真舒服。" } ], finishNormalZone);
+      }
+    }
+
+    function completeTask(taskId) {
+      shared.activeTasks = shared.activeTasks.filter(t => t !== taskId);
+      advanceTime();
+      textEl.innerHTML = "（任务完成，点击右上角返回校园）";
+      if (shared.activeTasks.length === 0) {
+        globalLog.push({ speaker: "旁白", text: "【提示】陈竞交代的任务都完成了，回田径场找他复命吧！" });
+      }
+    }
+
+    function startDialogue(lines, completeCallback) {
+      dialogueQueue = [...lines];
+      onQueueComplete = completeCallback;
+      nextLine();
+    }
+
+    function nextLine() {
+      if (dialogueQueue.length > 0) {
+        currentLine = dialogueQueue.shift();
+        speakerEl.textContent = currentLine.speaker;
+        globalLog.push(currentLine); 
+        
+        textEl.textContent = ""; charIndex = 0; isTyping = true; nextIndicator.style.display = "none";
+        clearInterval(typingTimer);
+        typingTimer = setInterval(() => {
+          textEl.textContent = currentLine.text.slice(0, ++charIndex);
+          if (charIndex >= currentLine.text.length) { 
+            clearInterval(typingTimer); isTyping = false; nextIndicator.style.display = "block"; 
+          }
+        }, 40);
+      } else {
+        nextIndicator.style.display = "none";
+        textEl.innerHTML = "（点击右上角返回校园）";
+        speakerEl.textContent = "";
+        if (onQueueComplete) {
+          const cb = onQueueComplete; onQueueComplete = null; cb();
+        }
+      }
+    }
+
+    function advanceDialogue() {
+      if (currentState !== "ZONE" || choicePanel.style.display === "flex") return;
+      if (isTyping) {
+        clearInterval(typingTimer);
+        textEl.textContent = currentLine.text;
+        isTyping = false;
+        nextIndicator.style.display = "block";
+      } else {
+        nextLine();
+      }
+    }
+
+    function showChoices(choices) {
+      choicePanel.innerHTML = ""; choicePanel.style.display = "flex";
+      choices.forEach(c => {
+        let btn = document.createElement("button");
+        btn.className = "choice-btn"; btn.textContent = c.text;
+        btn.onclick = () => { choicePanel.style.display = "none"; c.action(); };
+        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); choicePanel.style.display = "none"; c.action(); });
+        choicePanel.appendChild(btn);
+      });
+    }
+
+    function finishNormalZone() {
+      if (!shared.visitedZones.includes(shared.targetZone.id)) {
+        shared.visitedZones.push(shared.targetZone.id); advanceTime();
+      }
+    }
+
+    function finishTrackEvent() {
+      if (!shared.visitedZones.includes("track")) {
+        shared.visitedZones.push("track"); shared.activeTasks.push("houji", "shaoen"); advanceTime();
+      }
+      textEl.innerHTML = "（任务已记录，点击右上角返回校园去完成吧）";
+    }
+
+    // ================= 8. 音游系统 =================
+    function startTrackMinigame() {
+      startGenericMinigame({
+        tip: "点击屏幕左右侧（或按 A/D 键）接住节拍！",
+        onWin: () => {
+          startDialogue([ { speaker: "陈竞", text: "太强了！你竟然跑赢了我！" }, { speaker: "陈竞", text: "这就是一中‘砺志’的精神吧，不断向前！下次体测我们再来比过！" }, { speaker: "陈竞", text: "别忘了刚才交代你的事，快去【厚积楼】和【绍恩楼】吧！" } ], finishTrackEvent);
+        },
+        onLose: () => {
+          startDialogue([ { speaker: "陈竞", text: "哈哈，看来你还得练练啊！" }, { speaker: "陈竞", text: "别忘了刚才交代你的事，快去【厚积楼】和【绍恩楼】吧！" } ], finishTrackEvent);
+        }
+      });
+    }
+
+    function startGenericMinigame(config) {
+      currentMinigameConfig = config;
+      currentState = "MINIGAME";
+      overlay.style.display = "none"; backBtn.style.display = "none"; logBtn.style.display = "none";
+      rhythmUI.style.display = "flex"; rhythmTipEl.textContent = config.tip;
+      
+      minigameScore = 0; notes = []; notesSpawned = 0; hitEffects = [];
+      rhythmScoreEl.textContent = `0 / 10`;
+      setTimeout(() => { spawnNote(); }, 1000);
+    }
+
+    function spawnNote() {
+      if (notesSpawned >= 10) return;
+      notes.push({ x: 640, y: 400, dir: Math.random() > 0.5 ? "left" : "right", speed: 8, hit: false });
+      notesSpawned++;
+      setTimeout(spawnNote, 800);
+    }
+
+    function drawMinigame() {
+      background("#1A2536"); 
+      fill(255, 184, 77, 20); noStroke(); rect(0, 0, width/2, height);
+      fill(47, 107, 255, 20); rect(width/2, 0, width/2, height);
+      fill(255, 255, 255, 100); textSize(32); textAlign(CENTER, CENTER);
+      text("点 击 左 侧", width/4, height - 150); text("点 击 右 侧", width*3/4, height - 150);
+
+      for (let i = hitEffects.length - 1; i >= 0; i--) {
+        let fx = hitEffects[i]; fx.alpha -= 15;
+        if (fx.alpha <= 0) hitEffects.splice(i, 1);
+        else { fill(39, 174, 96, fx.alpha); noStroke(); ellipse(fx.x, 400, 120, 120); }
+      }
+      fill("#2F6BFF"); noStroke(); ellipse(640, 400, 40, 40);
+      noFill(); stroke("#FFB84D"); strokeWeight(4); ellipse(340, 400, 100, 100); ellipse(940, 400, 100, 100);
+
+      for (let i = notes.length - 1; i >= 0; i--) {
+        let n = notes[i];
+        if (!n.hit) {
+          if (n.dir === "left") n.x -= n.speed; else n.x += n.speed;
+          fill("#E8E8F0"); noStroke(); ellipse(n.x, n.y, 30, 30);
+          if (n.x < -100 || n.x > 1380) { notes.splice(i, 1); checkGameEnd(); }
+        }
+      }
+    }
+
+    function checkHit(dir) {
+      let targetX = dir === "left" ? 340 : 940, closestIdx = -1, minDist = 120; 
+      for (let i = 0; i < notes.length; i++) {
+        if (!notes[i].hit && notes[i].dir === dir) {
+          let d = Math.abs(notes[i].x - targetX);
+          if (d < minDist) { minDist = d; closestIdx = i; }
+        }
+      }
+      if (closestIdx !== -1) {
+        notes.splice(closestIdx, 1); minigameScore++;
+        rhythmScoreEl.textContent = `${minigameScore} / 10`;
+        rhythmScoreEl.style.color = "#27AE60"; setTimeout(() => rhythmScoreEl.style.color = "#FFB84D", 200);
+        hitEffects.push({ x: targetX, alpha: 255 });
+      }
+      checkGameEnd();
+    }
+
+    function checkGameEnd() {
+      if (minigameScore >= 7) endMinigame(true);
+      else if (notesSpawned >= 10 && notes.length === 0 && minigameScore < 7) endMinigame(false);
+    }
+
+    function endMinigame(isWin) {
+      currentState = "ZONE";
+      rhythmUI.style.display = "none"; overlay.style.display = "block"; backBtn.style.display = "block"; logBtn.style.display = "block";
+      if (isWin) { if (currentMinigameConfig && currentMinigameConfig.onWin) currentMinigameConfig.onWin(); }
+      else { if (currentMinigameConfig && currentMinigameConfig.onLose) currentMinigameConfig.onLose(); }
+      currentMinigameConfig = null;
+    }
+
+    // ================= 9. 三立堂专属：分类小游戏 =================
+    function startSortingGame() {
+      currentState = "SORTING_GAME";
+      overlay.style.display = "none"; backBtn.style.display = "none"; logBtn.style.display = "none";
+      
+      sortingGame.active = true; sortingGame.timer = 15; sortingGame.score = 0;
+      sortingGame.leftTarget = "奇数"; sortingGame.rightTarget = "偶数";
+      spawnSortingItem();
+
+      let countdown = setInterval(() => {
+        if (!sortingGame.active) { clearInterval(countdown); return; }
+        sortingGame.timer--;
+        if (sortingGame.timer <= 0) { clearInterval(countdown); endSortingGame(false); }
+      }, 1000);
+    }
+
+    function spawnSortingItem() {
+      sortingGame.currentNum = Math.floor(Math.random() * 90) + 10;
+      sortingGame.floatX = 640; sortingGame.floatY = 250;
+    }
+
+    function drawSortingGame() {
+      background("#1A1A2E");
+      fill("#FFB84D"); textSize(36); textAlign(CENTER, CENTER);
+      text(`分发册子：还有 ${sortingGame.timer} 秒`, 640, 80);
+      fill("#E8E8F0"); textSize(24);
+      text(`已分类：${sortingGame.score} / 5`, 640, 140);
+
+      fill("#FFF8E7"); stroke("#FFB84D"); strokeWeight(4);
+      rect(sortingGame.floatX - 80, sortingGame.floatY - 60, 160, 120, 16);
+      fill("#2B2B2B"); noStroke(); textSize(64);
+      text(sortingGame.currentNum, sortingGame.floatX, sortingGame.floatY + 10);
+
+      drawBox(sortingGame.boxLeft, sortingGame.leftTarget, "#4ECDC4");
+      drawBox(sortingGame.boxRight, sortingGame.rightTarget, "#FF6B6B");
+    }
+
+    function drawBox(box, label, color) {
+      fill(color); stroke("#E8E8F0"); strokeWeight(4);
+      rect(box.x, box.y, box.w, box.h, 12);
+      fill("#1A1A2E"); textSize(36); textAlign(CENTER, CENTER);
+      text(label, box.x + box.w/2, box.y + box.h/2);
+    }
+
+    function checkSortingHit(x, y) {
+      if (!sortingGame.active) return;
+      let isLeftBox = x > sortingGame.boxLeft.x && x < sortingGame.boxLeft.x + sortingGame.boxLeft.w &&
+                      y > sortingGame.boxLeft.y && y < sortingGame.boxLeft.y + sortingGame.boxLeft.h;
+      let isRightBox = x > sortingGame.boxRight.x && x < sortingGame.boxRight.x + sortingGame.boxRight.w &&
+                       y > sortingGame.boxRight.y && y < sortingGame.boxRight.y + sortingGame.boxRight.h;
+
+      if (isLeftBox || isRightBox) {
+        let isEven = sortingGame.currentNum % 2 === 0;
+        let correct = (isEven && isRightBox) || (!isEven && isLeftBox);
+
+        if (correct) {
+          sortingGame.score++;
+          if (sortingGame.score >= 5) { sortingGame.active = false; endSortingGame(true); return; }
+          spawnSortingItem();
+        } else {
+          sortingGame.timer = Math.max(0, sortingGame.timer - 2);
+        }
+      }
+    }
+
+    function endSortingGame(isWin) {
+      currentState = "ZONE";
+      overlay.style.display = "block"; backBtn.style.display = "block"; logBtn.style.display = "block";
+      
+      if (isWin) {
+        shared.helpedList.add("团委老师");
+        shared.tasksCompleted += 1; advanceTime(); updateTaskUI();
+        let gotPaper = Math.random() < 0.5;
+        if (gotPaper) { shared.papers++; updateTaskUI(); }
+
+        let dialogue = [
+          { speaker: "团委老师", text: "太棒了！你的分类非常准确，而且速度很快。" },
+          { speaker: "团委老师", text: "一中的‘求真’精神，就是要在这种细节中体现出来，你做得很好。" }
+        ];
+        if (gotPaper) {
+          dialogue.push({ speaker: "旁白", text: "你在讲台上发现了一张折起来的纸条，上面隐约写着：『当迷雾散去，去最高处寻找答案。』" });
+          dialogue.push({ speaker: "旁白", text: "【获得神秘纸条：隐藏结局的线索】" });
+          globalLog.push({ speaker: "旁白", text: "【获得纸条】当迷雾散去，去最高处寻找答案。" });
+        }
+        startDialogue(dialogue, finishNormalZone);
+      } else {
+        advanceTime();
+        startDialogue([ { speaker: "团委老师", text: "没关系，时间有些仓促，册子有点乱。" }, { speaker: "团委老师", text: "但你的热心值得肯定，下次再快一点就好啦。" } ], finishNormalZone);
+      }
+    }
+
+    // ================= 10. 宿舍专属：清理错题本小游戏 =================
+    function startCleaningGame() {
+      currentState = "CLEANING_GAME";
+      overlay.style.display = "none"; backBtn.style.display = "none"; logBtn.style.display = "none";
+      
+      cleaningGame.active = true; cleaningGame.timer = 15; cleaningGame.score = 0;
+      cleaningGame.items = [];
+      spawnCleaningItems();
+
+      let countdown = setInterval(() => {
+        if (!cleaningGame.active) { clearInterval(countdown); return; }
+        cleaningGame.timer--;
+        if (cleaningGame.timer <= 0) { clearInterval(countdown); endCleaningGame(false); }
+      }, 1000);
+    }
+
+    function spawnCleaningItems() {
+      cleaningGame.items = [];
+      let shuffled = [...mathProblems].sort(() => 0.5 - Math.random());
+      let hasFalse = false;
+      for(let i=0; i<3; i++) {
+        if(!shuffled[i].valid) hasFalse = true;
+      }
+      if(!hasFalse) { shuffled[0] = mathProblems.find(p => !p.valid); }
+
+      for(let i=0; i<3; i++) {
+        cleaningGame.items.push({
+          x: 340 + i * 300,
+          y: 350,
+          text: shuffled[i].eq,
+          isCorrect: shuffled[i].valid
+        });
+      }
+    }
+
+    function drawCleaningGame() {
+      background("#2C3E50"); 
+      
+      fill("#FFB84D"); textSize(32); textAlign(CENTER, CENTER);
+      text(`打扫卫生：清理错误的错题纸团！`, 640, 80);
+      fill("#E8E8F0"); textSize(24);
+      text(`剩余时间：${cleaningGame.timer} 秒 | 已清理：${cleaningGame.score} / 3`, 640, 140);
+
+      for (let item of cleaningGame.items) {
+        fill("#F0F0F0"); stroke("#888"); strokeWeight(2);
+        ellipse(item.x, item.y, 160, 120);
+        fill("#2B2B2B"); noStroke(); textSize(24); textAlign(CENTER, CENTER);
+        text(item.text, item.x, item.y);
+      }
+    }
+
+    function checkCleaningHit(x, y) {
+      if (!cleaningGame.active) return;
+
+      for (let i = 0; i < cleaningGame.items.length; i++) {
+        let item = cleaningGame.items[i];
+        let d = dist(x, y, item.x, item.y);
+        if (d < 80) {
+          if (!item.isCorrect) { 
+            cleaningGame.score++;
+            if (cleaningGame.score >= 3) {
+              cleaningGame.active = false;
+              endCleaningGame(true);
+              return;
+            }
+            spawnCleaningItems();
+          } else {
+            cleaningGame.timer = Math.max(0, cleaningGame.timer - 2);
+          }
+          break;
+        }
+      }
+    }
+
+    function endCleaningGame(isWin) {
+      currentState = "ZONE";
+      overlay.style.display = "block"; backBtn.style.display = "block"; logBtn.style.display = "block";
+      
+      if (isWin) {
+        shared.helpedList.add("教官");
+        shared.tasksCompleted += 1;
+        updateTaskUI();
+        advanceTime();
+        
+        let gotPaper = Math.random() < 0.5; 
+        if (gotPaper) {
+          shared.papers++;
+          updateTaskUI();
+        }
+
+        let dialogue = [
+          { speaker: "教官", text: "嗯，走廊扫得很干净，这些没用的废纸也清理掉了。" },
+          { speaker: "教官", text: "我就说嘛，你们几个认真起来还是很能干的！" }
+        ];
+        
+        if (gotPaper) {
+          dialogue.push({ speaker: "旁白", text: "你在扫把底下发现了一张皱巴巴的纸条，上面写着：『当迷雾散去，去最高处寻找答案。』" });
+          dialogue.push({ speaker: "旁白", text: "【获得神秘纸条：隐藏结局的线索】" });
+          globalLog.push({ speaker: "旁白", text: "【获得纸条】当迷雾散去，去最高处寻找答案。" });
+        }
+
+        startDialogue(dialogue, finishNormalZone);
+
+      } else {
+        advanceTime();
+        startDialogue([
+          { speaker: "教官", text: "时间到了，虽然没扫完，但看你们这么卖力，算你们过关吧。" },
+          { speaker: "教官", text: "下次打扫动作麻利点！" }
+        ], finishNormalZone);
+      }
+    }
+
+    // ================= 11. 思源厅专属：接水滴小游戏 (新) =================
+    function startWaterGame() {
+      currentState = "WATER_GAME";
+      overlay.style.display = "none"; backBtn.style.display = "none"; logBtn.style.display = "none";
+      
+      waterGame.active = true;
+      waterGame.timer = 15;
+      waterGame.score = 0;
+      waterGame.drops = [];
+
+      // 生成水滴的定时器
+      let spawnInterval = setInterval(() => {
+        if (!waterGame.active) { clearInterval(spawnInterval); return; }
+        waterGame.drops.push({
+          x: Math.random() * 1000 + 140,
+          y: -50,
+          speed: Math.random() * 3 + 4,
+          isPoison: Math.random() < 0.3 // 30%概率是黑水滴（不可点击）
+        });
+      }, 500);
+
+      // 倒计时
+      let countdown = setInterval(() => {
+        if (!waterGame.active) { clearInterval(countdown); return; }
+        waterGame.timer--;
+        if (waterGame.timer <= 0) { 
+          clearInterval(countdown); 
+          clearInterval(spawnInterval);
+          endWaterGame(false); 
+        }
+      }, 1000);
+    }
+
+    function drawWaterGame() {
+      background("#2C3E50");
+      
+      // UI
+      fill("#FFB84D"); textSize(36); textAlign(CENTER, CENTER);
+      text(`接水滴：还有 ${waterGame.timer} 秒`, 640, 80);
+      fill("#E8E8F0"); textSize(24);
+      text(`已接住：${waterGame.score} / 5`, 640, 140);
+
+      // 绘制掉落的水滴
+      for (let i = waterGame.drops.length - 1; i >= 0; i--) {
+        let d = waterGame.drops[i];
+        d.y += d.speed;
+
+        if (d.isPoison) {
+          fill("#333333"); stroke("#FF4D4D"); strokeWeight(2);
+        } else {
+          fill("#4ECDC4"); stroke("#FFFFFF"); strokeWeight(2);
+        }
+        
+        // 画水滴形状（用椭圆代替）
+        ellipse(d.x, d.y, 40, 50);
+
+        // 移出屏幕
+        if (d.y > 750) {
+          waterGame.drops.splice(i, 1);
+        }
+      }
+
+      // 接水杯/水桶（底部装饰）
+      fill("#888"); noStroke();
+      rect(400, 650, 480, 40, 10);
+      fill("#FFF"); textSize(20);
+      text("点击水滴接住它！", 640, 620);
+    }
+
+    function checkWaterHit(x, y) {
+      if (!waterGame.active) return;
+
+      for (let i = waterGame.drops.length - 1; i >= 0; i--) {
+        let d = waterGame.drops[i];
+        let distance = dist(x, y, d.x, d.y);
+
+        if (distance < 40) { // 点中水滴
+          if (d.isPoison) {
+            // 点到脏水，扣时间
+            waterGame.timer = Math.max(0, waterGame.timer - 2);
+          } else {
+            // 点中好水
+            waterGame.score++;
+            if (waterGame.score >= 5) {
+              waterGame.active = false;
+              endWaterGame(true);
+              return;
+            }
+          }
+          waterGame.drops.splice(i, 1); // 无论点中什么，都消失
+          break;
+        }
+      }
+    }
+
+    function endWaterGame(isWin) {
+      currentState = "ZONE";
+      overlay.style.display = "block"; backBtn.style.display = "block"; logBtn.style.display = "block";
+
+      if (isWin) {
+        shared.helpedList.add("一起买水的同学");
+        shared.tasksCompleted += 1;
+        advanceTime();
+        updateTaskUI();
+
+        startDialogue([
+          { speaker: "旁白", text: "你眼疾手快，稳稳接住了几滴漏出来的水。" },
+          { speaker: "同学", text: "哇！你好厉害，手速真快。水买好啦，我们走吧！" },
+          { speaker: "主角", text: "哈哈，走吧。今天真开心！" },
+          { speaker: "旁白", text: "你和同学有说有笑地走出了思源厅。" }
+        ], finishNormalZone);
+
+      } else {
+        shared.tasksCompleted += 0.5;
+        advanceTime();
+        updateTaskUI();
+
+        startDialogue([
+          { speaker: "旁白", text: "突然，水龙头水压变大，你手一滑没接住。" },
+          { speaker: "旁白", text: "哗啦——水不小心洒到了同学的鞋子上。" },
+          { speaker: "主角", text: "啊！对不起对不起！我马上帮你擦。" },
+          { speaker: "同学", text: "哈哈哈，没事没事，回去换一双洗洗就好了。" },
+          { speaker: "旁白", text: "虽然有点小尴尬，但同学并没有怪你，你们还是愉快地告别了。" }
+        ], finishNormalZone);
+      }
+    }
+
+    // ================= 12. 结局与致谢名单 =================
+    function triggerEnding() {
+      currentState = "ZONE";
+      overlay.style.display = "block"; backBtn.style.display = "none"; logBtn.style.display = "none"; 
+      choicePanel.style.display = "none";
+      
+      isHiddenEnding = (shared.papers > 0);
+
+      let endingDialogue = [
+        { speaker: "广播", text: "各位同学请注意，今天有一位热心肠的同学，默默帮助了很多人。" },
+        { speaker: "校长", text: "这位同学不仅积极参与校园活动，还体现了我们一中‘砺志、笃学、求真、致美’的精神！" },
+        { speaker: "校长", text: "特此授予该同学【优秀学生】称号，大家掌声鼓励！" },
+        { speaker: "旁白", text: "你在热烈的掌声中，感受到了一种前所未有的充实感。" }
+      ];
+
+      if (isHiddenEnding) {
+        endingDialogue.push({ speaker: "旁白", text: "此时，你摸了摸口袋里那张皱巴巴的纸条，仿佛明白了什么。" });
+        endingDialogue.push({ speaker: "旁白", text: "【隐藏结局达成：百年中国梦】" });
+      } else {
+        endingDialogue.push({ speaker: "旁白", text: "【普通结局达成：优秀学生】" });
+      }
+
+      startDialogue(endingDialogue, () => {
+        currentState = "CREDITS";
+        overlay.style.display = "none";
+        initCredits();
+      });
+    }
+
+    function initCredits() {
+      creditsY = 720; 
+      creditsText = [
+        { text: "制作人", size: 36, color: "#FFB84D", spacing: 60 },
+        { text: "高一七班 王启轩", size: 24, color: "#E8E8F0", spacing: 100 },
+        { text: "—————————————", size: 20, color: "#555", spacing: 80 },
+        { text: "特别鸣谢（今天你帮助过的人）", size: 24, color: "#E8E8F0", spacing: 60 }
+      ];
+
+      shared.helpedList.forEach(name => {
+        creditsText.push({ text: `❤ ${name}`, size: 20, color: "#27AE60", spacing: 40 });
+      });
+
+      if (shared.helpedList.size === 0) {
+         creditsText.push({ text: "（今天你走得很快，没有多作停留）", size: 18, color: "#888", spacing: 40 });
+      }
+
+      creditsText.push(
+        { text: "—————————————", size: 20, color: "#555", spacing: 100 },
+        { text: "沙县一中 · 校训", size: 28, color: "#FFB84D", spacing: 60 },
+        { text: "砺 志 · 笃 学 · 求 真 · 致 美", size: 32, color: "#FFFFFF", spacing: 100 },
+        { text: "竞贤文化", size: 28, color: "#FFB84D", spacing: 60 },
+        { text: "“竞贤不是跑赢别人，是跑赢昨天的自己。”", size: 20, color: "#E8E8F0", spacing: 120 },
+        { text: "感谢游玩", size: 36, color: "#FFB84D", spacing: 80 }
+      );
+    }
+
+    function drawCredits() {
+      background(10, 10, 15); 
+
+      textAlign(CENTER, CENTER);
+      let currentY = creditsY;
+
+      for (let i = 0; i < creditsText.length; i++) {
+        let item = creditsText[i];
+        fill(item.color);
+        textSize(item.size);
+        text(item.text, width / 2, currentY);
+        currentY += item.spacing;
+      }
+
+      creditsY -= 1.5;
+
+      if (creditsY < -1500) {
+        fill(255, 255, 255, 150); textSize(20);
+        let tipText = isHiddenEnding ? "（致谢完毕，点击屏幕进入隐藏篇章）" : "（致谢完毕，点击屏幕进入校歌篇章）";
+        text(tipText, width / 2, 600);
+      }
+    }
+
+    function drawSchoolSong() {
+      background(10, 10, 15); 
+
+      push();
+      noFill();
+      stroke(255, 184, 77, 50);
+      strokeWeight(2);
+      let wave1 = sin(frameCount * 0.05) * 50;
+      let wave2 = cos(frameCount * 0.03) * 80;
+      ellipse(width/2, height/2, 400 + wave1, 400 + wave1);
+      ellipse(width/2, height/2, 500 + wave2, 500 + wave2);
+      pop();
+
+      textAlign(CENTER, CENTER);
+      let currentY = songY;
+
+      for (let i = 0; i < songLyrics.length; i++) {
+        let item = songLyrics[i];
+        fill(item.color);
+        textSize(item.size);
+        text(item.text, width / 2, currentY);
+        currentY += item.spacing;
+      }
+
+      songY -= 1.2; 
+
+      if (songY < -1500) {
+        fill(255, 255, 255, 150); textSize(18);
+        text("（点击屏幕重新开始游戏）", width / 2, 600);
+      }
+    }
+
+    function drawHiddenEnding() {
+      background(10, 5, 5);
+
+      push();
+      noFill();
+      stroke(255, 77, 77, 30);
+      strokeWeight(3);
+      let wave = sin(frameCount * 0.03) * 100;
+      ellipse(width/2, height/2, 600 + wave, 600 + wave);
+      pop();
+
+      textAlign(CENTER, CENTER);
+      let currentY = hiddenY;
+
+      for (let i = 0; i < hiddenText.length; i++) {
+        let item = hiddenText[i];
+        fill(item.color);
+        textSize(item.size);
+        text(item.text, width / 2, currentY);
+        currentY += item.spacing;
+      }
+
+      hiddenY -= 0.8; 
+
+      if (hiddenY < -1500) {
+        fill(255, 255, 255, 150); textSize(18);
+        text("（点击屏幕重新开始游戏）", width / 2, 600);
+      }
+    }
+
+    function resetGame() {
+      currentState = "TITLE";
+      shared.tasksCompleted = 0;
+      shared.visitedZones = [];
+      shared.activeTasks = [];
+      shared.papers = 0;
+      shared.hasEnded = false;
+      shared.helpedList.clear();
+      isHiddenEnding = false;
+      if (audioSchool) { audioSchool.pause(); audioSchool.currentTime = 0; }
+      if (audioHidden) { audioHidden.pause(); audioHidden.currentTime = 0; }
+    }
+
+    function renderLog() {
+      logContent.innerHTML = "";
+      globalLog.forEach(item => {
+        let highlightedText = item.text.replace(/【(.*?)】/g, '<span class="task-hl">【$1】</span>');
+        logContent.innerHTML += `<p><span class="log-speaker">${item.speaker}:</span>${highlightedText}</p>`;
+      });
+      logContent.scrollTop = logContent.scrollHeight;
+    }
+  </script>
+</body>
+</html>
