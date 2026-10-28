@@ -422,10 +422,8 @@
     let liuyiMorningImg;
     let liuyiNightImg;
     let siyuanNightImg;
-    let ruyuanDayImg, ruyuanNightImg;
-    let guiyuanDayImg, guiyuanNightImg;
-    let meiyuanDayImg, meiyuanNightImg;
-    let zhuyuanDayImg, zhuyuanNightImg;
+    let dormDayImg;
+    let dormNightImg;
     let creditsY = 720;
 
     let creditsText = [];
@@ -465,15 +463,10 @@
       liuyiMorningImg = loadImage('liuyi_morning.jpg', () => {}, () => {});
       liuyiNightImg = loadImage('liuyi_night.jpg', () => {}, () => {});
       siyuanNightImg = loadImage('siyuan_night.jpg', () => {}, () => {});
-      ruyuanDayImg = loadImage('ruyuan_day.jpg', () => {}, () => {});
-      ruyuanNightImg = loadImage('ruyuan_night.jpg', () => {}, () => {});
-      guiyuanDayImg = loadImage('guiyuan_day.jpg', () => {}, () => {});
-      guiyuanNightImg = loadImage('guiyuan_night.jpg', () => {}, () => {});
-      meiyuanDayImg = loadImage('meiyuan_day.jpg', () => {}, () => {});
-      meiyuanNightImg = loadImage('meiyuan_night.jpg', () => {}, () => {});
-      zhuyuanDayImg = loadImage('zhuyuan_day.jpg', () => {}, () => {});
-      zhuyuanNightImg = loadImage('zhuyuan_night.jpg', () => {}, () => {});
+      dormDayImg = loadImage('dorm_day.jpg', () => {}, () => { console.log('未找到 dorm_day.jpg'); });
+      dormNightImg = loadImage('dorm_night.jpg', () => {}, () => { console.log('未找到 dorm_night.jpg'); });
     }
+
     function setup() {
       let c = createCanvas(1280, 720);
       c.parent("canvas-wrap");
@@ -858,16 +851,9 @@
         useImg = (currentMinutes >= 18 * 60) ? siyuanNightImg : siyuanBgImg;
       } else if (zone.id === "liuyi") {
         useImg = (currentMinutes >= 18 * 60) ? liuyiNightImg : liuyiMorningImg;
-      } else if (zone.id === "ruyuan") {
-        useImg = (currentMinutes >= 18 * 60) ? ruyuanNightImg : ruyuanDayImg;
-      } else if (zone.id === "guiyuan") {
-        useImg = (currentMinutes >= 18 * 60) ? guiyuanNightImg : guiyuanDayImg;
-      } else if (zone.id === "meiyuan") {
-        useImg = (currentMinutes >= 18 * 60) ? meiyuanNightImg : meiyuanDayImg;
-      } else if (zone.id === "zhuyuan") {
-        useImg = (currentMinutes >= 18 * 60) ? zhuyuanNightImg : zhuyuanDayImg;
+      } else if (["ruyuan", "guiyuan", "meiyuan", "zhuyuan"].includes(zone.id)) {
+        useImg = (currentMinutes >= 18 * 60) ? dormNightImg : dormDayImg;
       }
-
       // 统一绘制逻辑
       if (useImg) {
         let imgAspect = useImg.width / useImg.height;
