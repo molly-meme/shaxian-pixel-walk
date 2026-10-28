@@ -457,6 +457,7 @@
     ];
 
     function preload() {
+      console.log("preload 函数被调用了！");
       siyuanBgImg = loadImage('siyuan_bg.jpg', () => {}, () => { console.log('未找到 siyuan_bg.jpg'); });
       trackBgImg = loadImage('track_bg.jpg', () => {}, () => { console.log('未找到 track_bg.jpg'); });
       shaoenMorningImg = loadImage('shaoen_morning.jpg', () => {}, () => { console.log('未找到 shaoen_morning.jpg'); });
