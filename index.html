@@ -2314,7 +2314,7 @@
       creditsY = 720; 
       creditsText = [
         { text: "制作人", size: 36, color: "#FFB84D", spacing: 60 },
-        { text: "高一七班 王启轩", size: 24, color: "#E8E8F0", spacing: 100 },
+        { text: "高一七班 王启轩和罗邓天妍，班主任 郑婉真", size: 24, color: "#E8E8F0", spacing: 100 },
         { text: "—————————————", size: 20, color: "#555", spacing: 80 },
         { text: "特别鸣谢（今天你帮助过的人）", size: 24, color: "#E8E8F0", spacing: 60 }
       ];
@@ -2460,7 +2460,6 @@
       backBtn.style.display = "none"; 
       logBtn.style.display = "none";
       fill("#6B5B4A"); noStroke(); rect(0, 0, width, height); // 铺一层室内底色
-      // 👆 加上结束 👆
       if (isWin) startDialogue([ { speaker: "旁白", text: "你成功接好了线路，饮水机恢复了正常！" } ], () => { triggerFireEvent(); });
       else startDialogue([ { speaker: "旁白", text: "你没修好，饮水机突然闪出一阵火花！" } ], () => { triggerFireEvent(); });
     }
