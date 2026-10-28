@@ -189,6 +189,16 @@
 
     let currentState = "TITLE"; 
     let isHiddenEnding = false; 
+    let trackBgImg;
+    let shaoenMorningImg;
+    let shaoenNightImg;
+    let siyuanBgImg, siyuanNightImg;
+    let liuyiMorningImg, liuyiNightImg;
+    let ruyuanDayImg, ruyuanNightImg;
+    let guiyuanDayImg, guiyuanNightImg;
+    let meiyuanDayImg, meiyuanNightImg;
+    let zhuyuanDayImg, zhuyuanNightImg;
+
     let shared = { 
       playerPos: { ...START_POS }, 
       targetZone: null, 
@@ -459,22 +469,22 @@ let trackBgImg;
       { text: "加油一中", size: 32, color: "#FFB84D", spacing: 80 }
     ];
 
-    function preload() {
-            siyuanBgImg = loadImage('siyuan_bg.jpg', () => {}, () => { console.log('未找到 siyuan_bg.jpg'); });
- trackBgImg = loadImage('track_bg.jpg', () => {}, () => { console.log('未找到 track_bg.jpg'); });
-      shaoenMorningImg = loadImage('shaoen_morning.jpg', () => {}, () => { console.log('未找到 shaoen_morning.jpg'); });
-      shaoenNightImg = loadImage('shaoen_night.jpg', () => {}, () => { console.log('未找到 shaoen_night.jpg'); });
-    liuyiMorningImg = loadImage('liuyi_morning.jpg', () => {}, () => {});
-      liuyiNightImg = loadImage('liuyi_night.jpg', () => {}, () => {});
-      siyuanNightImg = loadImage('siyuan_night.jpg', () => {}, () => {});
-      ruyuanDayImg = loadImage('ruyuan_day.jpg', () => {}, () => {});
-      ruyuanNightImg = loadImage('ruyuan_night.jpg', () => {}, () => {});
-      guiyuanDayImg = loadImage('guiyuan_day.jpg', () => {}, () => {});
-      guiyuanNightImg = loadImage('guiyuan_night.jpg', () => {}, () => {});
-      meiyuanDayImg = loadImage('meiyuan_day.jpg', () => {}, () => {});
-      meiyuanNightImg = loadImage('meiyuan_night.jpg', () => {}, () => {});
-      zhuyuanDayImg = loadImage('zhuyuan_day.jpg', () => {}, () => {});
-      zhuyuanNightImg = loadImage('zhuyuan_night.jpg', () => {}, () => {});
+       function preload() {
+      trackBgImg = loadImage('track_bg.jpg', () => {}, () => { console.log('找不到 track_bg.jpg'); });
+      shaoenMorningImg = loadImage('shaoen_morning.jpg', () => {}, () => { console.log('找不到 shaoen_morning.jpg'); });
+      shaoenNightImg = loadImage('shaoen_night.jpg', () => {}, () => { console.log('找不到 shaoen_night.jpg'); });
+      siyuanBgImg = loadImage('siyuan_bg.jpg', () => {}, () => { console.log('找不到 siyuan_bg.jpg'); });
+      siyuanNightImg = loadImage('siyuan_night.jpg', () => {}, () => { console.log('找不到 siyuan_night.jpg'); });
+      liuyiMorningImg = loadImage('liuyi_morning.jpg', () => {}, () => { console.log('找不到 liuyi_morning.jpg'); });
+      liuyiNightImg = loadImage('liuyi_night.jpg', () => {}, () => { console.log('找不到 liuyi_night.jpg'); });
+      ruyuanDayImg = loadImage('ruyuan_day.jpg', () => {}, () => { console.log('找不到 ruyuan_day.jpg'); });
+      ruyuanNightImg = loadImage('ruyuan_night.jpg', () => {}, () => { console.log('找不到 ruyuan_night.jpg'); });
+      guiyuanDayImg = loadImage('guiyuan_day.jpg', () => {}, () => { console.log('找不到 guiyuan_day.jpg'); });
+      guiyuanNightImg = loadImage('guiyuan_night.jpg', () => {}, () => { console.log('找不到 guiyuan_night.jpg'); });
+      meiyuanDayImg = loadImage('meiyuan_day.jpg', () => {}, () => { console.log('找不到 meiyuan_day.jpg'); });
+      meiyuanNightImg = loadImage('meiyuan_night.jpg', () => {}, () => { console.log('找不到 meiyuan_night.jpg'); });
+      zhuyuanDayImg = loadImage('zhuyuan_day.jpg', () => {}, () => { console.log('找不到 zhuyuan_day.jpg'); });
+      zhuyuanNightImg = loadImage('zhuyuan_night.jpg', () => {}, () => { console.log('找不到 zhuyuan_night.jpg'); });
     }
     function setup() {
       let c = createCanvas(1280, 720);
